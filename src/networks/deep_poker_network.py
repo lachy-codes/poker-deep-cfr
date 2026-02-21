@@ -44,8 +44,9 @@ class CardEmbedding(nn.Module):
         valid = (cards >= 0)  # shape (B, num_cards)
         
         # Compute rank and suit from card id
-        ranks = cards % 13   # 0..12
-        suits = cards // 13  # 0..3
+        ranks = torch.where(valid, cards % 13, 0)     # dummy 0 when invalid
+        suits = torch.where(valid, cards // 13, 0)    # dummy 0 when invalid
+        
         
         # Get embeddings
         rank_e = self.rank_emb(ranks)    # (B, num_cards, dim)
@@ -66,8 +67,8 @@ class CardEmbedding(nn.Module):
         
         return out
 
-class DeepPokerNN(nn.module):
-    def __init__(self, card_groups, bet_features, actions, hidden_dim):
+class DeepPokerNN(nn.Module):
+    def __init__(self, card_groups, bet_features, actions=3, hidden_dim=256):
         super().__init__()
         
         # Card branch
@@ -88,8 +89,17 @@ class DeepPokerNN(nn.module):
         self.action_head = nn.Linear(hidden_dim, actions)
         self.norm = nn.LayerNorm(hidden_dim)
         
+        # Bet sizing head
+        self.bet_sizing_head = nn.Sequential(
+            nn.Linear(hidden_dim, hidden_dim // 2),
+            nn.ReLU(),
+            nn.Linear(hidden_dim // 2, 1),
+            nn.Sigmoid()                    # → [0, 1]
+        )
+        
     def forward(self, card_groups, bets):
         # cards_groups = list of tensors: [hole (B,2), flop (B,3), turn (B,1), river (B,1)]
+        
         card_feats = [emb(g) for emb, g in zip(self.card_embs, card_groups)]
         card_feats = torch.cat(card_feats, dim=1)
         x = F.relu(self.card1(card_feats))
@@ -110,6 +120,7 @@ class DeepPokerNN(nn.module):
         z = F.relu(self.comb3(z) + z)
         z = self.norm(z)
         
-        return self.action_head(z)   # raw logits → advantages or strategy
+        
+        return self.action_head(z), self.bet_sizing_head(z)  # raw logits, bet size fraction
     
     

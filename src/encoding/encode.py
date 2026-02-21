@@ -47,7 +47,6 @@ def encode_state(
     opp_stack = stacks[1-p]
     
     eff_stack = min(hero_stack, opp_stack) if hero_stack > 0 else 100.0
-    norm_stack = eff_stack
     
     current_pot = state.pot
     
@@ -71,17 +70,17 @@ def encode_state(
         rel_size = min(rel_size, 10.0)
         history_vec[0, offset + 2] = rel_size
 
-        pot_frac = pot_before / norm_stack
+        pot_frac = pot_before / 400.0
         history_vec[0, offset + 3] = min(pot_frac, 5.0)
         
     # Scalar features
     
     scalars = torch.zeros((1, 12), dtype=torch.float32, device=device)
 
-    scalars[0, 0] = current_pot / norm_stack
-    scalars[0, 1] = hero_stack / norm_stack
-    scalars[0, 2] = opp_stack / norm_stack
-    scalars[0, 3] = eff_stack / 100.0
+    scalars[0, 0] = current_pot / 200.0
+    scalars[0, 1] = hero_stack / 200.0
+    scalars[0, 2] = opp_stack / 200.0
+    scalars[0, 3] = eff_stack / 200.0
 
     if 0 <= street <= 3:
         scalars[0, 4 + street] = 1.0

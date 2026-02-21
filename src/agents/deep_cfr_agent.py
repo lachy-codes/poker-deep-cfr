@@ -1,5 +1,5 @@
-from memory.reservoir_memory import ReservoirMemory
-from networks.deep_poker_network import DeepPokerNN
+from src.memory.reservoir_memory import ReservoirMemory
+from src.networks.deep_poker_network import DeepPokerNN
 from torch.optim.adam import Adam
 import torch
 import numpy as np
@@ -18,8 +18,9 @@ class DeepCFRAgent:
     def regret_matched_strategy(self, card_groups, features, legal_actions): 
         # Get network predictions
         with torch.no_grad():
-            advantages = self.adv_net(card_groups, features)
+            advantages, bet_size = self.adv_net(card_groups, features)
             advantages = advantages[0].cpu().numpy()
+            bet_size = bet_size[0][0].item()
         
         # Mask advantages
         masked_advantages = np.zeros(self.num_actions)
@@ -34,4 +35,4 @@ class DeepCFRAgent:
             for a in legal_actions:
                 strategy[a] = 1.0 / len(legal_actions)
         
-        return strategy
+        return strategy, bet_size

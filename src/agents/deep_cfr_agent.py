@@ -36,3 +36,5 @@ class DeepCFRAgent:
                 strategy[a] = 1.0 / len(legal_actions)
         
         return strategy, bet_size
+    
+    

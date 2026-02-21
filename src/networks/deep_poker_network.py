@@ -68,7 +68,7 @@ class CardEmbedding(nn.Module):
         return out
 
 class DeepPokerNN(nn.Module):
-    def __init__(self, card_groups, bet_features, actions=3, hidden_dim=256):
+    def __init__(self, card_groups, bet_features, actions=3, hidden_dim=128):
         super().__init__()
         
         # Card branch

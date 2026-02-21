@@ -5,9 +5,12 @@ import torch
 import numpy as np
 
 class DeepCFRAgent: 
-    def __init__(self, reservoir_capacity:int=300_000, num_actions:int=10, device='cpu'):
+    def __init__(self, reservoir_capacity:int=300_000, num_actions:int=3, device='cpu'):
         self.memory = ReservoirMemory(reservoir_capacity)
-        self.adv_net = DeepPokerNN(card_groups=4, bet_features=108, actions=10, hidden_dim=256).to(device)
+        self.adv_net = DeepPokerNN(card_groups=4, bet_features=108, actions=3).to(device)
+        
+        self.adv_net.eval()
+        
         self.optimizer = Adam(self.adv_net.parameters(), lr=1e-6, weight_decay=1e-5)
         self.num_actions = num_actions
     def train_advantage_network(self, epochs, batch_size): 

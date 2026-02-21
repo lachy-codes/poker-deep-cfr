@@ -2,23 +2,32 @@ from src.memory.reservoir_memory import ReservoirMemory
 import pokers as pkrs
 from src.agents.deep_cfr_agent import DeepCFRAgent
 from src.networks.deep_poker_network import DeepPokerNN
-from src.encoding.encode import encode_state
+from src.encoding.encode import encode_state2
 from torch.optim import Adam
 import numpy as np
 import os
 import time
 import random
+import cProfile
+import pstats
+import torch
 
 class DeepCFR:
+    
+
     def deep_cfr(self, num_iterations, traversals, num_players:int=2, path: str="models", device: str="cpu"):
         
+        
+        self.HISTORY_TEMPLATE = torch.zeros((1, 24*4), dtype=torch.float32, device='cuda' if torch.cuda.is_available() else 'cpu')
+        self.SCALARS_TEMPLATE = torch.zeros((1, 12), dtype=torch.float32, device='cuda' if torch.cuda.is_available() else 'cpu')
+    
         os.makedirs(path, exist_ok=True)
         
         # Create CFR agents
         agents = [ DeepCFRAgent(num_actions=3) for _ in range(num_players) ]
         
         # Create strategy network, optimizer and memory
-        strategy_net = DeepPokerNN(card_groups=4, bet_features=108, actions=3, hidden_dim=256).to(device)
+        strategy_net = DeepPokerNN(card_groups=4, bet_features=108, actions=3).to(device)
         strategy_optimizer = Adam(strategy_net.parameters(), lr=5e-5, weight_decay=1e-5)
         self.strat_mem = ReservoirMemory()
         
@@ -27,7 +36,8 @@ class DeepCFR:
         for iteration in range(1, num_iterations + 1):
             print(f"Iteration {iteration}/{num_iterations}")
             for p in range(num_players):
-                start_time = time.time()
+                
+                
                 for _ in range(traversals):
                     state = pkrs.State.from_seed(
                         n_players=num_players,
@@ -39,8 +49,7 @@ class DeepCFR:
                     )
                     
                     self.cfr_traverse(state=state, iteration=iteration, traverser=p, agents=agents, pot_before_action=[], action_history=[])
-                end_time = time.time()
-                print(f"time taken: {(end_time - start_time)}")
+                
     
     def cfr_traverse(self, 
                     state: pkrs.State, 
@@ -68,7 +77,7 @@ class DeepCFR:
         if current_player == traverser:
             legal_actions = self.get_legal_actions(state, current_player)
             
-            card_groups, features = encode_state(state=state, action_history=action_history, pot_before_action=pot_before_action)
+            card_groups, features = encode_state2(state=state, action_history=action_history, pot_before_action=pot_before_action, history_template=self.HISTORY_TEMPLATE, scalars_template=self.SCALARS_TEMPLATE)
             
             # Get regret matched strategy
             strategy, bet_size = agents[traverser].regret_matched_strategy(card_groups, features, legal_actions)
@@ -119,7 +128,7 @@ class DeepCFR:
         else: 
             legal_actions = self.get_legal_actions(state=state, player=current_player)
             
-            card_groups, features = encode_state(state=state, action_history=action_history, pot_before_action=pot_before_action)
+            card_groups, features = encode_state2(state=state, action_history=action_history, pot_before_action=pot_before_action, history_template=self.HISTORY_TEMPLATE, scalars_template=self.SCALARS_TEMPLATE)
             
             strategy, bet_size = agents[current_player].regret_matched_strategy(card_groups, features, legal_actions)
             
